@@ -95,6 +95,10 @@ def _commonprefix(s1, s2):
             return s1[:i]
     return s1
 
+def _sql_escape(string):
+    """ Escape LIKE operator special characters using backslashes """
+    return re.sub(r'[%_\\]', lambda match: '\\' + match.group(), string)
+
 class Cppman(Crawler):
     """ Manage cpp man pages, indexes. """
 
@@ -167,15 +171,16 @@ class Cppman(Crawler):
 
                             e.g. std::basic_string::append
                         """
+                        ke = _sql_escape(k)
                         sql_results = self.db_cursor.execute(
                             'SELECT id, keyword FROM "%s_keywords" '
-                            'WHERE keyword LIKE "%%::%s::%%" '
-                            'OR keyword LIKE "%s::%%" '
-                            'OR keyword LIKE "%s" '
-                            'OR keyword LIKE "%s %%" '
-                            'OR keyword LIKE "%s)%%" '
-                            'OR keyword LIKE "%s,%%"'
-                            % (table, k, k, k, k, k, k)).fetchall()
+                            'WHERE keyword LIKE "%%::%s::%%" ESCAPE "\\"'
+                            'OR keyword LIKE "%s::%%" ESCAPE "\\"'
+                            'OR keyword LIKE "%s" ESCAPE "\\"'
+                            'OR keyword LIKE "%s %%" ESCAPE "\\"'
+                            'OR keyword LIKE "%s)%%" ESCAPE "\\"'
+                            'OR keyword LIKE "%s,%%" ESCAPE "\\"'
+                            % (table, ke, ke, ke, ke, ke, ke)).fetchall()
 
                         for id, keyword in sql_results:
                             keyword = keyword.replace("%s" % k, "%s" % a)
@@ -473,12 +478,13 @@ class Cppman(Crawler):
 
     def _fetch_page_by_keyword(self, keyword):
         """ fetches result for a keyword """
+        keyword = _sql_escape(keyword)
         return self.cursor.execute(
             'SELECT t1.title, t2.keyword, t1.url '
             'FROM "%s" AS t1 '
             'JOIN "%s_keywords" AS t2 '
             'WHERE t1.id = t2.id AND t2.keyword '
-            'LIKE ? ORDER BY t2.keyword'
+            'LIKE ? ESCAPE "\\" ORDER BY t2.keyword'
             % (self.source, self.source), ['%%%s%%' % keyword]).fetchall()
 
     def _search_keyword(self, pattern):
