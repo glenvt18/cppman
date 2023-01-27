@@ -37,7 +37,9 @@ from bs4 import BeautifulSoup
 from cppman import environ, util
 from cppman.crawler import Crawler
 
-
+# Default output format for Cppman.find(), Cppman.print_index()
+# Use {title} {keyword} {url}
+_DEFAULT_FORMAT = "{keyword} - {title}"
 
 def _sort_crawl(entry):
     """ Sorting entries for putting '(1)' indexes behind keyword
@@ -82,7 +84,12 @@ def _sort_search(entry, pattern):
     else:
         hasStd2 = 0
 
-    return (hasStd1, hasStd2, keyword.find(pattern), keyword)
+    if pattern:
+        return (hasStd1, hasStd2, keyword.find(pattern), keyword)
+    else:
+        return (hasStd1, hasStd2, keyword)
+
+
 
 # Return the longest prefix of all list elements.
 def _commonprefix(s1, s2):
@@ -487,6 +494,15 @@ class Cppman(Crawler):
             'LIKE ? ESCAPE "\\" ORDER BY t2.keyword'
             % (self.source, self.source), ['%%%s%%' % keyword]).fetchall()
 
+    def _fetch_all_pages(self):
+        """ fetches all rows """
+        return self.cursor.execute(
+            'SELECT t1.title, t2.keyword, t1.url '
+            'FROM "%s" AS t1 '
+            'JOIN "%s_keywords" AS t2 '
+            'WHERE t1.id = t2.id'
+            % (self.source, self.source)).fetchall()
+
     def _search_keyword(self, pattern):
         """ multiple fetches for each pattern """
         if not os.path.exists(environ.index_db):
@@ -496,15 +512,18 @@ class Cppman(Crawler):
         self.cursor = conn.cursor()
         self.source = environ.source
 
-        self.cursor.execute('PRAGMA case_sensitive_like=ON')
-        results = self._fetch_page_by_keyword("%s" % pattern)
-        results.extend(self._fetch_page_by_keyword("%s %%" % pattern))
-        results.extend(self._fetch_page_by_keyword("%% %s" % pattern))
-        results.extend(self._fetch_page_by_keyword("%% %s %%" % pattern))
+        if pattern:
+            self.cursor.execute('PRAGMA case_sensitive_like=ON')
+            results = self._fetch_page_by_keyword("%s" % pattern)
+            results.extend(self._fetch_page_by_keyword("%s %%" % pattern))
+            results.extend(self._fetch_page_by_keyword("%% %s" % pattern))
+            results.extend(self._fetch_page_by_keyword("%% %s %%" % pattern))
 
-        results.extend(self._fetch_page_by_keyword("%s%%" % pattern))
-        if len(results) == 0:
-            results = self._fetch_page_by_keyword("%%%s%%" % pattern)
+            results.extend(self._fetch_page_by_keyword("%s%%" % pattern))
+            if len(results) == 0:
+                results = self._fetch_page_by_keyword("%%%s%%" % pattern)
+        else:
+            results = self._fetch_all_pages()
 
         conn.close()
         return sorted(list(set(results)), key=lambda e: _sort_search(e, pattern))
@@ -538,23 +557,34 @@ class Cppman(Crawler):
                      str(columns), environ.pager_config, pattern)
         return pid
 
-    def find(self, pattern):
+    def find(self, pattern, output_format):
         """Find pages in database."""
+        output_format = output_format or _DEFAULT_FORMAT
 
         results = self._search_keyword(pattern)
+        if not results:
+            raise RuntimeError('%s: nothing appropriate.' % pattern)
 
         pat = re.compile('(.*?)(%s)(.*?)( \(.*\))?$' %
                          re.escape(pattern), re.I)
 
-        if results:
-            for name, keyword, url in results:
+        for title, keyword, url in results:
+            if os.isatty(sys.stdout.fileno()):
+                keyword = pat.sub(
+                        r'\1\033[1;31m\2\033[0m\3\033[1;33m\4\033[0m',
+                        keyword)
+            print(output_format.format(title=title, keyword=keyword, url=url))
 
-                if os.isatty(sys.stdout.fileno()):
-                    keyword = pat.sub(
-                        r'\1\033[1;31m\2\033[0m\3\033[1;33m\4\033[0m', keyword)
-                print("%s - %s" % (keyword, name))
-        else:
-            raise RuntimeError('%s: nothing appropriate.' % pattern)
+    def print_index(self, output_format):
+        """Output page index"""
+        output_format = output_format or _DEFAULT_FORMAT
+        results = self._search_keyword(None)
+
+        if not results:
+            raise RuntimeError('Index is empty')
+
+        for title, keyword, url in results:
+            print(output_format.format(title=title, keyword=keyword, url=url))
 
     def update_mandb(self, quiet=True):
         """Update mandb."""

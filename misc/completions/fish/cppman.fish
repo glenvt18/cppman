@@ -6,6 +6,8 @@ complete -c $progname -s s -l source -a "cppreference.com cplusplus.com" -d "Sel
 complete -c $progname -s c -l cache-all -d "Cache all available man pages from cppreference.com and cplusplus.com to enable offline browsing"
 complete -c $progname -s C -l clear-cache -d "Clear all cached files"
 complete -c $progname -s f -l find-page -d "Find man page"
+complete -c $progname -l index -d "Print keyword index"
+complete -c $progname -l format -d "Output template for '--find-page', '--index', a python new-style format string which may contain {keyword}, {title}, {url}"
 complete -c $progname -s o -l force-update -d "Force cppman to update existing cache when '--cache-all' or browsing man pages that were already cached"
 complete -c $progname -s m -l use-mandb -a "true false" -d "If true, cppman adds manpage path to mandb so that you can view C++ manpages with 'man' command"
 complete -c $progname -s p -l pager -a "vim nvim less system" -d "Select pager to use"
