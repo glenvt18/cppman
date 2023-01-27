@@ -23,6 +23,9 @@ _arguments -n \
   "(1 -)"{-c,--cache-all}"[Cache all available man pages from cppreference.com and cplusplus.com to enable offline browsing]" \
   "(1 -)"{-C,--clear-cache}"[Clear all cached files.]" \
   "(1 -)"{-f,--find-page=}"[Find man page.]:KEYWORD: " \
+  "(1 -)"{--index}"[Print keyword index.]" \
+
+  "(1 -)"{--format=}"[Output template for '--find-page', '--index', a python new-style format string which may contain {id}, {keyword}, {title}, {url}.]:FORMAT: " \
   "(1 -)"{-h,--help}"[show help message and exit]" \
   "(1 -)"{-o,--force-update}"[Force cppman to update existing cache when '--cache-all' or browsing man pages that were already cached.]" \
   "(1 -)"{-m,--use-mandb=}"[If true, cppman adds manpage path to mandb so that you can view C++ manpages with 'man' command.]:MANDB:(true false)" \

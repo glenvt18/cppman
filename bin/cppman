@@ -71,6 +71,14 @@ def main():
         make_option('-f', '--find-page', action='store', type='string',
                     dest='keyword', default=None,
                     help='Find man page.'),
+        make_option('--index', action='store_true',
+                    dest='index', default=False,
+                    help='Print keyword index.'),
+        make_option('--format', action='store', type='string',
+                    dest='format', default=None,
+                    help="Output template for '--find-page', '--index', "
+                    'a python new-style format string which may contain '
+                    '{id}, {keyword}, {title}, {url}.'),
         make_option('-o', '--force-update', action='store_true',
                     dest='force', default=False,
                     help="Force cppman to update existing cache when "
@@ -115,7 +123,12 @@ def main():
 
     if options.keyword:
         cm = Cppman()
-        cm.find(options.keyword)
+        cm.find(options.keyword, options.format)
+        sys.exit(0)
+
+    if options.index:
+        cm = Cppman()
+        cm.print_index(options.format)
         sys.exit(0)
 
     if options.source:
