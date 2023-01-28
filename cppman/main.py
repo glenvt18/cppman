@@ -529,13 +529,37 @@ class Cppman(Crawler):
         conn.close()
         return sorted(list(set(results)), key=lambda e: _sort_search(e, pattern))
 
-    def man(self, pattern):
-        """Call viewer.sh to view man page"""
-        results = self._search_keyword(pattern)
-        if len(results) == 0:
-            raise RuntimeError('No manual entry for %s ' % pattern)
+    def _find_page_by_id(self, page_id):
+        """ fetch a page (title, url) by page id"""
+        if not os.path.exists(environ.index_db):
+            raise RuntimeError("can't find index.db")
 
-        id_, page_name, keyword, url = results[0]
+        conn = sqlite3.connect(environ.index_db)
+        cursor = conn.cursor()
+        self.source = environ.source
+
+        row = cursor.execute(
+            'SELECT title, url '
+            'FROM "%s" '
+            'WHERE id = %d'
+            % (self.source, page_id)).fetchone()
+
+        return row or (None, None)
+
+    def man(self, pattern=None, page_id=None):
+        """Call viewer.sh to view man page"""
+        if pattern:
+            results = self._search_keyword(pattern)
+            if len(results) == 0:
+                raise RuntimeError('No manual entry for %s ' % pattern)
+            _, page_name, _, url = results[0]
+        elif page_id is not None:
+            page_name, url = self._find_page_by_id(page_id)
+            if not page_name:
+                raise RuntimeError('No manual entry with id %s ' % page_id)
+            pattern = page_name
+        else:
+            raise RuntimeError('Either pattern or page_id must be given')
 
         try:
             avail = os.listdir(os.path.join(environ.cache_dir, environ.source))
